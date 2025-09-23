@@ -1,6 +1,6 @@
 import serial
 
-# 시리얼 포트 설정 (Windows: COM3, Linux: /dev/ttyUSB0, Mac: /dev/tty.usbmodemxxx)
+# 시리얼 포트 설정 (Windows: COM4, Linux: /dev/ttyUSB0, Mac: /dev/tty.usbmodemxxx)
 arduino = serial.Serial(port='COM4', baudrate=9600, timeout=1)
 
 while True:
