@@ -17,6 +17,7 @@ int cds_1 = A0; // 왼쪽 아래
 int cds_2 = A1; // 오른쪽 아래
 int cds_3 = A2; // 왼쪽 위
 int cds_4 = A3; // 오른쪽 위
+int solarPin = A6; // 태양광 전기 센서
 
 // 오차값
 int cds_1_max = 988;
@@ -37,6 +38,11 @@ int get_cds_2() { return analogRead(cds_2); }
 int get_cds_3() { return analogRead(cds_3); }
 int get_cds_4() { return analogRead(cds_4); }
 
+// 평균 계산용 버퍼
+#define N_AVG 10
+float solarBuf[N_AVG] = {0};
+int solarIndex = 0;
+
 void setup() 
 {
   Serial.begin(9600);
@@ -46,8 +52,6 @@ void setup()
 
   servoX.write(posX);
   servoY.write(posY);
-
-  // 캘리브레이션 부분 제거
 }
 
 void loop() {
@@ -55,14 +59,15 @@ void loop() {
   int raw_A1 = get_cds_2();
   int raw_A2 = get_cds_3();
   int raw_A3 = get_cds_4();
+  int raw_A6 = analogRead(solarPin); // 태양광 전기 센서 읽기
 
   int cal_A0 = map(constrain(raw_A0, sensorMin_A0, sensorMax_A0), sensorMin_A0, sensorMax_A0, 0, 100);
   int cal_A1 = map(constrain(raw_A1, sensorMin_A1, sensorMax_A1), sensorMin_A1, sensorMax_A1, 0, 100);
   int cal_A2 = map(constrain(raw_A2, sensorMin_A2, sensorMax_A2), sensorMin_A2, sensorMax_A2, 0, 100);
   int cal_A3 = map(constrain(raw_A3, sensorMin_A3, sensorMax_A3), sensorMin_A3, sensorMax_A3, 0, 100);
 
-  int left   = (cal_A0 + cal_A2) / 2; // 왼쪽: A0(왼쪽 아래) + A2(왼쪽 위)
-  int right  = (cal_A1 + cal_A3) / 2; // 오른쪽: A1(오른쪽 아래) + A3(오른쪽 위)
+  int left   = (cal_A0 + cal_A2) / 2; // 왼쪽: A0 + A2
+  int right  = (cal_A1 + cal_A3) / 2; // 오른쪽: A1 + A3
   int top    = (cal_A2 + cal_A3) / 2; // 위쪽: A2 + A3
   int bottom = (cal_A0 + cal_A1) / 2; // 아래쪽: A0 + A1
 
@@ -87,37 +92,44 @@ void loop() {
   servoX.write(posX);
   servoY.write(posY);
 
-  Serial.print("A0%"); Serial.print(cal_A0); // 왼쪽 아래
-  Serial.print("%A1%"); Serial.print(cal_A1); // 오른쪽 아래
-  Serial.print("%A2%"); Serial.print(cal_A2); // 왼쪽 위
-  Serial.print("%A3%"); Serial.print(cal_A3); // 오른쪽 위
+  // 기존 volt_A6 계산 그대로
+  float volt_A6 = map(raw_A6, 0, 1023, 0, 2500);
+
+  // 평균 계산용 배열에 저장
+  solarBuf[solarIndex] = volt_A6;
+  solarIndex = (solarIndex + 1) % N_AVG;
+
+  // 최근 N_AVG개 평균 계산
+  float volt_A6_avg = 0;
+  for(int i = 0; i < N_AVG; i++) volt_A6_avg += solarBuf[i];
+  volt_A6_avg /= N_AVG;
+
+  // 시리얼 출력
+  Serial.print("A0%"); Serial.print(cal_A0);
+  Serial.print("%A1%"); Serial.print(cal_A1);
+  Serial.print("%A2%"); Serial.print(cal_A2);
+  Serial.print("%A3%"); Serial.print(cal_A3);
   Serial.print("%");
   Serial.print("     ");
   Serial.print(" X:"); Serial.print(posX);
   Serial.print(" Y:"); Serial.print(posY);
 
   Serial.print("     ");
-  if(moveX==0 && moveY==0) Serial.print(" NoMove");
+  if(moveX == 0 && moveY == 0) Serial.print(" NoMove");
   else 
   {
-    if(left < right) 
-    {
-      Serial.print(" Left");  
-    }
-    else
-    {
-      Serial.print(" Right");             
-    }
+    if(left < right) Serial.print(" Left");  
+    else Serial.print(" Right");             
 
-    if(top > bottom)
-    { 
-      Serial.print(" Down"); 
-    }
-    else
-    { 
-      Serial.print(" Up");
-    }
+    if(top > bottom) Serial.print(" Down"); 
+    else Serial.print(" Up");
   }
+
+  // 평균값 출력 (원래 계산식 유지)
+  Serial.print("  %Volt%"); 
+  Serial.print(volt_A6_avg / 100); // 0~5V 변환
+  Serial.print("V%");
+
   Serial.println();
 
   delay(100);

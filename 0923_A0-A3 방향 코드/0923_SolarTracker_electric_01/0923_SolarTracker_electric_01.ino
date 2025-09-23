@@ -17,6 +17,7 @@ int cds_1 = A0; // 왼쪽 아래
 int cds_2 = A1; // 오른쪽 아래
 int cds_3 = A2; // 왼쪽 위
 int cds_4 = A3; // 오른쪽 위
+int solarPin = A6; // 태양광 전기 센서
 
 // 오차값
 int cds_1_max = 988;
@@ -55,11 +56,13 @@ void loop() {
   int raw_A1 = get_cds_2();
   int raw_A2 = get_cds_3();
   int raw_A3 = get_cds_4();
+  int raw_A6 = analogRead(solarPin); // 태양광 전기 센서 읽기
 
   int cal_A0 = map(constrain(raw_A0, sensorMin_A0, sensorMax_A0), sensorMin_A0, sensorMax_A0, 0, 100);
   int cal_A1 = map(constrain(raw_A1, sensorMin_A1, sensorMax_A1), sensorMin_A1, sensorMax_A1, 0, 100);
   int cal_A2 = map(constrain(raw_A2, sensorMin_A2, sensorMax_A2), sensorMin_A2, sensorMax_A2, 0, 100);
   int cal_A3 = map(constrain(raw_A3, sensorMin_A3, sensorMax_A3), sensorMin_A3, sensorMax_A3, 0, 100);
+  float volt_A6 = map(raw_A6, 0, 1023, 0, 2500);
 
   int left   = (cal_A0 + cal_A2) / 2; // 왼쪽: A0(왼쪽 아래) + A2(왼쪽 위)
   int right  = (cal_A1 + cal_A3) / 2; // 오른쪽: A1(오른쪽 아래) + A3(오른쪽 위)
@@ -118,6 +121,12 @@ void loop() {
       Serial.print(" Up");
     }
   }
+
+  // 추가된 태양광 전기센서 값 출력
+  Serial.print("   전기센서%"); 
+  Serial.print(volt_A6/100);
+  Serial.print("V");
+
   Serial.println();
 
   delay(100);
